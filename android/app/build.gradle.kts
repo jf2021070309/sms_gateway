@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.example.sms_gateway"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = 33
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

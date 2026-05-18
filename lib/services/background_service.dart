@@ -10,6 +10,8 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:telephony/telephony.dart' as tel;
+import 'package:http/http.dart' as http;
+
 
 import '../models/sms_log.dart';
 import 'storage_service.dart';
@@ -112,7 +114,16 @@ void onStart(ServiceInstance service) async {
     }
     service.invoke('heartbeat', {'time': DateTime.now().toIso8601String()});
   });
+
+  // ---- Polling for remote SMS (Cloud mode) ----
+  Timer.periodic(const Duration(seconds: 15), (_) async {
+    final remoteUrl = await StorageService.getRemoteUrl();
+    if (remoteUrl.isNotEmpty && remoteUrl.startsWith('http')) {
+      await _pollRemoteSms(service, remoteUrl);
+    }
+  });
 }
+
 
 // ─────────────────────────────────────────────
 //  HTTP Server with Shelf
@@ -194,7 +205,10 @@ Future<Response> _handleSendSms(
       );
     }
 
-    final phone = (data['phone'] ?? '').toString().trim();
+    var phone = (data['phone'] ?? '').toString().trim();
+    if (phone.length == 11 && phone.startsWith('51')) {
+      phone = '+$phone';
+    }
     final message = (data['message'] ?? '').toString().trim();
 
     if (phone.isEmpty) {
@@ -212,7 +226,7 @@ Future<Response> _handleSendSms(
       );
     }
 
-    // Basic phone validation
+    // Basic phone validation (allowing starting with +)
     final phoneRegex = RegExp(r'^\+?[0-9]{7,15}$');
     if (!phoneRegex.hasMatch(phone)) {
       return _logAndRespond(
@@ -295,6 +309,82 @@ Future<Response> _logAndRespond({
     headers: {'content-type': 'application/json'},
   );
 }
+
+// ─────────────────────────────────────────────
+//  Remote Polling Logic
+// ─────────────────────────────────────────────
+Future<void> _pollRemoteSms(ServiceInstance service, String remoteUrl) async {
+  try {
+    final apiKey = await StorageService.getApiKey();
+    
+    // 1. Fetch pending messages
+    final response = await http.get(
+      Uri.parse(remoteUrl),
+      headers: {'X-API-Key': apiKey},
+    );
+
+    if (response.statusCode != 200) return;
+
+    final data = json.decode(response.body);
+    if (data['success'] != true) return;
+
+    final List messages = data['messages'] ?? [];
+    if (messages.isEmpty) return;
+
+    final telephony = tel.Telephony.instance;
+
+    for (var msg in messages) {
+      final id = msg['id'].toString();
+      var phone = msg['phone'].toString().trim();
+      if (phone.length == 11 && phone.startsWith('51')) {
+        phone = '+$phone';
+      }
+      final content = msg['message'].toString();
+
+      bool success = false;
+      String? error;
+
+      try {
+        await telephony.sendSms(
+          to: phone,
+          message: content,
+          isMultipart: content.length > 160,
+        );
+        success = true;
+      } catch (e) {
+        success = false;
+        error = e.toString();
+      }
+
+      // 2. Log locally
+      _logAndRespond(
+        service: service,
+        phone: phone,
+        message: content,
+        status: success ? SmsStatus.success : SmsStatus.failed,
+        errorMsg: error,
+        httpStatus: 200, // Not used in polling context but required by helper
+      );
+
+      // 3. Notify server of result
+      await http.post(
+        Uri.parse(remoteUrl),
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'id': id,
+          'status': success ? 'enviado' : 'fallido',
+          'error': error,
+        }),
+      );
+    }
+  } catch (e) {
+    print('Error polling remote SMS: $e');
+  }
+}
+
 
 // ─────────────────────────────────────────────
 //  Helpers

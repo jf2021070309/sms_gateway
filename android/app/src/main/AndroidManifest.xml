@@ -38,22 +38,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Background Service: override plugin's exported=true to false for security -->
+        <!-- Necesario para Android 14+ -->
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false"
-            tools:replace="android:exported"/>
-
-        <!-- Boot receiver to auto-start service -->
-        <receiver
-            android:name="id.flutter.flutter_background_service.BackgroundServiceBootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-            </intent-filter>
-        </receiver>
+            tools:replace="android:exported,android:foregroundServiceType" />
 
         <!-- Flutter embedding metadata -->
         <meta-data

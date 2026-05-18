@@ -7,10 +7,13 @@ class StorageService {
   static const String _logsKey = 'sms_logs';
   static const String _apiKeyKey = 'api_key';
   static const String _serverPortKey = 'server_port';
+  static const String _remoteUrlKey = 'remote_url';
+
   static const int _maxLogs = 50;
 
   static Future<List<SmsLog>> getLogs() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final raw = prefs.getStringList(_logsKey) ?? [];
     return raw
         .map((e) => SmsLog.fromMap(json.decode(e)))
@@ -22,6 +25,7 @@ class StorageService {
 
   static Future<void> addLog(SmsLog log) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final raw = prefs.getStringList(_logsKey) ?? [];
     raw.insert(0, json.encode(log.toMap()));
     // Keep only last _maxLogs entries
@@ -38,6 +42,7 @@ class StorageService {
 
   static Future<String> getApiKey() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     return prefs.getString(_apiKeyKey) ?? 'MY_SECRET_KEY_2024';
   }
 
@@ -48,11 +53,23 @@ class StorageService {
 
   static Future<int> getServerPort() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     return prefs.getInt(_serverPortKey) ?? 8080;
   }
 
   static Future<void> setServerPort(int port) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_serverPortKey, port);
+  }
+
+  static Future<String> getRemoteUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    return prefs.getString(_remoteUrlKey) ?? '';
+  }
+
+  static Future<void> setRemoteUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_remoteUrlKey, url);
   }
 }
