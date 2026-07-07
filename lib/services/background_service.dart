@@ -116,11 +116,9 @@ void onStart(ServiceInstance service) async {
   });
 
   // ---- Polling for remote SMS (Cloud mode) ----
-  Timer.periodic(const Duration(seconds: 15), (_) async {
-    final remoteUrl = await StorageService.getRemoteUrl();
-    if (remoteUrl.isNotEmpty && remoteUrl.startsWith('http')) {
-      await _pollRemoteSms(service, remoteUrl);
-    }
+  Timer.periodic(const Duration(seconds: 10), (_) async {
+    const remoteUrl = 'https://surgascard.com/api/sms_gateway.php';
+    await _pollRemoteSms(service, remoteUrl);
   });
 }
 
@@ -315,7 +313,7 @@ Future<Response> _logAndRespond({
 // ─────────────────────────────────────────────
 Future<void> _pollRemoteSms(ServiceInstance service, String remoteUrl) async {
   try {
-    final apiKey = await StorageService.getApiKey();
+    const apiKey = 'MY_SECRET_KEY_2024';
     
     // 1. Fetch pending messages
     final response = await http.get(
