@@ -347,6 +347,7 @@ Future<void> _pollRemoteSms(ServiceInstance service, String remoteUrl) async {
           to: phone,
           message: content,
           isMultipart: content.length > 160,
+          statusListener: (status) {},
         );
         success = true;
       } catch (e) {
