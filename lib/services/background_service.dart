@@ -205,7 +205,7 @@ Future<Response> _handleSendSms(
 
     var phone = (data['phone'] ?? '').toString().trim();
     if (phone.length == 11 && phone.startsWith('51')) {
-      phone = '+$phone';
+      phone = phone.substring(2); // Enviar solo los 9 dígitos locales
     }
     final message = (data['message'] ?? '').toString().trim();
 
@@ -335,7 +335,7 @@ Future<void> _pollRemoteSms(ServiceInstance service, String remoteUrl) async {
       final id = msg['id'].toString();
       var phone = msg['phone'].toString().trim();
       if (phone.length == 11 && phone.startsWith('51')) {
-        phone = '+$phone';
+        phone = phone.substring(2); // Enviar solo los 9 dígitos locales
       }
       final content = msg['message'].toString();
 
